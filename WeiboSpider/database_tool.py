@@ -9,13 +9,13 @@ import pymongo
 class DBConnector:
     def __init__(self):
         # 重写该类或者填充本地数据库配置信息
-        self.mongo_uri = ""
-        self.mongo_database = ""
+        self.mongo_uri = "localhost:27017"
+        self.mongo_database = "weibodata"
         self.mongo_user_name = ''
         self.mongo_pass_wd = ""
 
     def create_mongo_connection(self):
         client = pymongo.MongoClient(self.mongo_uri)
         database = client[self.mongo_database]
-        database.authenticate(self.mongo_user_name, self.mongo_pass_wd)
+        # database.authenticate(self.mongo_user_name, self.mongo_pass_wd)
         return database, client

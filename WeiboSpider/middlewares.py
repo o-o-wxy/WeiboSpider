@@ -28,9 +28,10 @@ class RandomUaAndProxyIpMiddleware(UserAgentMiddleware):
 
     @classmethod
     def from_crawler(cls, crawler):
-        api = crawler.settings.get('PROXY_API')  # api to get proxy ip address, usually an url
-        ip_num = int(re.findall(r'count=\d+', api)[0][6:])  # number of the proxy ip getting from url
-        s = cls(ua=UserAgent(), ip_num=ip_num, api=api)
+        # api = crawler.settings.get('PROXY_API')  # api to get proxy ip address, usually an url
+        # ip_num = int(re.findall(r'count=\d+', api)[0][6:])  # number of the proxy ip getting from url
+        # s = cls(ua=UserAgent(), ip_num=ip_num, api=api)
+        s = cls(ua=UserAgent(), ip_num=1)
         return s
 
     @staticmethod
@@ -63,10 +64,11 @@ class RetryMiddleware(object):
         self.ip_num = ip_num
 
     @classmethod
-    def from_crawler(cls, crawler):
-        api = crawler.settings.get('PROXY_API')
-        ip_num = int(re.findall(r'count=\d+', api)[0][6:])
-        s = cls(ip_num=ip_num)
+    def from_crawler(cls, crawler):  # 传参
+        # api = crawler.settings.get('PROXY_API')
+        # ip_num = int(re.findall(r'count=\d+', api)[0][6:])
+        # s = cls(ip_num=ip_num)
+        s = cls(ip_num=1)
         return s
 
     def process_response(self, request, response, spider):
@@ -85,12 +87,13 @@ class RetryMiddleware(object):
                 # proxy = RandomUaAndProxyIpMiddleware.get_proxy_ip(self.ip_num)
                 # request.meta['proxy'] = proxy
                 logging.log(msg=time.strftime("%Y-%m-%d %H:%M:%S [RetryMiddleware] ")
-                            + spider.name + ": restart crawl url:" + response.url, level=logging.INFO)
+                                + spider.name + ": restart crawl url:" + response.url, level=logging.INFO)
                 return request
             else:
                 # raise error IgnoreRequest to drop this request
                 logging.log(msg=time.strftime("%Y-%m-%d %H:%M:%S [RetryMiddleware] ")
-                            + spider.name + ": drop request by maximum retry, url:" + response.url, level=logging.INFO)
+                                + spider.name + ": drop request by maximum retry, url:" + response.url,
+                            level=logging.INFO)
                 raise IgnoreRequest
         else:
             try:
@@ -99,7 +102,8 @@ class RetryMiddleware(object):
                     # crawl empty json string
                     # drop this request
                     logging.log(msg=time.strftime("%Y-%m-%d %H:%M:%S [RetryMiddleware] ")
-                                + spider.name + ": drop request by empty json, url:" + response.url, level=logging.INFO)
+                                    + spider.name + ": drop request by empty json, url:" + response.url,
+                                level=logging.INFO)
                     raise IgnoreRequest
                 else:
                     # request.meta['parse_json'] = parse_json
@@ -111,6 +115,6 @@ class RetryMiddleware(object):
                     return response
                 else:
                     logging.log(msg=time.strftime("%Y-%m-%d %H:%M:%S [RetryMiddleware] ")
-                                + spider.name + ": drop request by json decoding error, url:"
-                                + response.url, level=logging.INFO)
+                                    + spider.name + ": drop request by json decoding error, url:"
+                                    + response.url, level=logging.INFO)
                     raise IgnoreRequest

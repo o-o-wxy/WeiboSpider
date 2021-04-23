@@ -24,6 +24,10 @@ class UserPostItem(scrapy.Item):
     user_post = scrapy.Field()
 
 
+class CommentItem(scrapy.Item):
+    user_comment = scrapy.Field()
+
+
 class HotSearchItem(scrapy.Item):
     # Item for real time hot search information
     hot_search = scrapy.Field()

@@ -35,6 +35,10 @@ class WeibospiderPipeline(object):
                 self.db['post'].update({"id": post_id}, {'$set': item['user_post']},  upsert=True)
                 return item
 
+            elif isinstance(item, CommentItem):
+                comment_id = item['user_comment']['id']
+                self.db['comment'].update({"id": comment_id}, {'$set': item['user_comment']},  upsert=True)
+
             elif isinstance(item, TotalNumItem):
                 uid_hash = hash(item['uid'])
                 insert_dict = {'uid': item['uid'], 'total_num': item['total_num'],

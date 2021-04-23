@@ -14,8 +14,7 @@ BOT_NAME = 'WeiboSpider'
 SPIDER_MODULES = ['WeiboSpider.spiders']
 NEWSPIDER_MODULE = 'WeiboSpider.spiders'
 
-LOG_FILE = "Weibo_Spider.log"
-LOG_LEVEL = "INFO"
+LOG_LEVEL = "DEBUG"
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'WeiboSpider (+http://www.yourdomain.com)'
@@ -35,7 +34,8 @@ DOWNLOAD_DELAY = 0
 #CONCURRENT_REQUESTS_PER_IP = 16
 
 # Disable cookies (enabled by default)
-#COOKIES_ENABLED = False
+#https://blog.csdn.net/weixin_39905695/article/details/111607700?utm_medium=distribute.pc_relevant.none-task-blog-baidujs_title-0&spm=1001.2101.3001.4242
+COOKIES_ENABLED = True
 
 # Disable Telnet Console (enabled by default)
 #TELNETCONSOLE_ENABLED = False
