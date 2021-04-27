@@ -24,6 +24,14 @@ class UserPostItem(scrapy.Item):
     user_post = scrapy.Field()
 
 
+class LikeUserItem(scrapy.Item):
+    like_user = scrapy.Field()
+
+
+class RepostUserItem(scrapy.Item):
+    repost_user = scrapy.Field()
+
+
 class CommentItem(scrapy.Item):
     user_comment = scrapy.Field()
 

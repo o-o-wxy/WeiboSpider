@@ -55,7 +55,7 @@ class WeiboSpider(scrapy.Spider):
     def crawling_user_info(self, uuid):
         # to generate user's profile information url
         user_info_url = self.start_urls[0] + self.__user_info_api['api_0'] + \
-                        uuid + self.__user_info_api['api_1'] + uuid
+                        str(uuid) + self.__user_info_api['api_1'] + str(uuid)
         return user_info_url
 
     def crawling_post_info(self, uuid):
@@ -63,21 +63,22 @@ class WeiboSpider(scrapy.Spider):
         weibo_info_urls = []
         self.total_flag = 1
         for i in range(1, self.__weibo_page_range + 1):
-            weibo_info_url = self.start_urls[0] + self.__weibo_info_api['api_0'] + uuid + \
-                             self.__weibo_info_api['api_1'] + uuid + self.__weibo_info_api['api_2'] + str(i)
+            weibo_info_url = self.start_urls[0] + self.__weibo_info_api['api_0'] + str(uuid) + \
+                             self.__weibo_info_api['api_1'] + str(uuid) + self.__weibo_info_api['api_2'] + str(i)
             weibo_info_urls.append(weibo_info_url)
         return weibo_info_urls
 
     def crawling_comment_info(self, mid, max_id=""):
         # generate comment url
         if max_id == "":
-            return self.__comment_api["url"] + mid + self.__comment_api["api_0"] + mid + self.__comment_api["api_2"]
+            return self.__comment_api["url"] + str(mid) + self.__comment_api["api_0"] + str(mid) + self.__comment_api[
+                "api_2"]
         else:
-            return self.__comment_api["url"] + mid + self.__comment_api["api_0"] + mid + self.__comment_api[
-                "api_1"] + max_id + self.__comment_api["api_2"]
+            return self.__comment_api["url"] + str(mid) + self.__comment_api["api_0"] + str(mid) + self.__comment_api[
+                "api_1"] + str(max_id) + self.__comment_api["api_2"]
 
     def crawling_comment_child(self, cid, max_id="0"):
-        return "https://m.weibo.cn/comments/hotFlowChild?cid=" + cid + "&max_id=" + max_id + "&max_id_type=0"
+        return "https://m.weibo.cn/comments/hotFlowChild?cid=" + str(cid) + "&max_id=" + str(max_id) + "&max_id_type=0"
 
     def parse_user(self, response):
         # the parser for user profile
@@ -87,10 +88,12 @@ class WeiboSpider(scrapy.Spider):
         user_info_item['user_info'] = user_info
         uuid = user_info['id']
         yield user_info_item
-        weibo_info_urls = self.crawling_post_info(uuid)
-        for weibo_info_url in weibo_info_urls:
-            yield scrapy.Request(url=weibo_info_url, headers=self.headers, cookies=self.cookies,
-                                 callback=self.parse_post, meta={'uuid': uuid})
+        # 判断微博数量与粉丝数量筛选用户
+        if user_info['followers_count'] > 100 and user_info['statuses_count'] > 100:
+            weibo_info_urls = self.crawling_post_info(uuid)
+            for weibo_info_url in weibo_info_urls:
+                yield scrapy.Request(url=weibo_info_url, headers=self.headers, cookies=self.cookies,
+                                     callback=self.parse_post, meta={'uuid': uuid})
 
     def parse_post(self, response):
         # the parser for user post
@@ -116,10 +119,69 @@ class WeiboSpider(scrapy.Spider):
                     yield scrapy.Request(url=precise_time_url, callback=self.parse_precise_time,
                                          meta={'post_item': user_post_item})
                 mid = mblog['id']
+                # 评论
                 comment_url = self.crawling_comment_info(mid=mid)
                 yield scrapy.Request(url=comment_url, callback=self.parse_comment,
                                      headers=self.headers, cookies=self.cookies,
                                      meta={'mid': mid})
+                # 点赞
+                like_url = "https://m.weibo.cn/api/attitudes/show?id=" + str(mid) + "&page=1"
+                yield scrapy.Request(url=like_url, callback=self.parse_like,
+                                     headers=self.headers, cookies=self.cookies,
+                                     meta={'mid': mid, 'page': 1})
+                # 转发
+                # https://m.weibo.cn/api/statuses/repostTimeline?id=4630601350516324&page=1
+                repost_url = "https://m.weibo.cn/api/statuses/repostTimeline?id=" + str(mid) + "&page=1"
+                yield scrapy.Request(url=repost_url, callback=self.parse_repost,
+                                     headers=self.headers, cookies=self.cookies,
+                                     meta={'mid': mid, 'page': 1})
+
+
+    def parse_like(self, response):
+        data = json.loads(response.text)['data']
+        mid = response.meta['mid']
+        page = response.meta['page']
+        for card in data['data']:
+            like_user_item = LikeUserItem()
+            like_user_item['like_user'] = card
+            yield like_user_item
+            if card['user']['followers_count'] > 100:
+                new_uid = card['user']['id']
+                user_info_url = self.crawling_user_info(uuid=new_uid)
+                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                                     cookies=self.cookies, callback=self.parse_user)
+        # 之后的点赞列表
+        max_page = data['max']
+        if page < max_page:
+            page += 1
+            like_url = "https://m.weibo.cn/api/attitudes/show?id=" + str(mid) + "&page="+str(page)
+            yield scrapy.Request(url=like_url, callback=self.parse_like,
+                                 headers=self.headers, cookies=self.cookies,
+                                 meta={'mid': mid, 'page': page})
+
+
+    def parse_repost(self, response):
+        data = json.loads(response.text)['data']
+        mid = response.meta['mid']
+        page = response.meta['page']
+        for card in data['data']:
+            repost_user_item = RepostUserItem()
+            repost_user_item['repost_user'] = card
+            yield repost_user_item
+            if card['user']['followers_count'] > 100:
+                new_uid = card['user']['id']
+                user_info_url = self.crawling_user_info(uuid=new_uid)
+                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                                     cookies=self.cookies, callback=self.parse_user)
+        # 之后的转发列表
+        max_page = data['max']
+        if page < max_page:
+            page += 1
+            repost_url = "https://m.weibo.cn/api/statuses/repostTimeline?id=" + str(mid) + "&page="+str(page)
+            yield scrapy.Request(url=repost_url, callback=self.parse_repost,
+                                 headers=self.headers, cookies=self.cookies,
+                                 meta={'mid': mid, 'page': page})
+
 
     def parse_comment_child(self, response):
         data = json.loads(response.text)
@@ -128,10 +190,13 @@ class WeiboSpider(scrapy.Spider):
             user_comment_item = CommentItem()
             user_comment_item['user_comment'] = card
             user_comment_item['user_comment']['master_id'] = mid
-            new_uid = card['user']['id']
-            user_info_url = self.crawling_user_info(uuid=new_uid)
-            yield scrapy.Request(url=user_info_url, headers=self.headers,
-                                 cookies=self.cookies, callback=self.parse_user)
+            yield user_comment_item
+            # 判断微博数量与粉丝数量筛选用户
+            if card['user']['followers_count'] > 100 and card['user']['statuses_count'] > 100:
+                new_uid = card['user']['id']
+                user_info_url = self.crawling_user_info(uuid=new_uid)
+                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                                     cookies=self.cookies, callback=self.parse_user)
         # 爬取之后的评论页面
         while True:
             if data['max_id'] == 0:
@@ -151,9 +216,12 @@ class WeiboSpider(scrapy.Spider):
             user_comment_item['user_comment'] = card
             user_comment_item['user_comment']['master_id'] = mid
             new_uid = card['user']['id']
-            user_info_url = self.crawling_user_info(uuid=new_uid)
-            yield scrapy.Request(url=user_info_url, headers=self.headers,
-                                 cookies=self.cookies, callback=self.parse_user)
+            yield user_comment_item
+            # 判断微博数量与粉丝数量筛选用户
+            if card['user']['followers_count'] > 100 and card['user']['statuses_count'] > 100:
+                user_info_url = self.crawling_user_info(uuid=new_uid)
+                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                                     cookies=self.cookies, callback=self.parse_user)
             # 爬取回复
             if card['more_info_type'] != 0:
                 cid = card['id']

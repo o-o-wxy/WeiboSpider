@@ -51,6 +51,14 @@ class WeibospiderPipeline(object):
                     self.db['total_num'].update({'uid': uid}, {'$set': insert_dict},  upsert=True)
                     return item
 
+            elif isinstance(item, LikeUserItem):
+                like_id = item['like_user']['id']
+                self.db['like'].update({"id": like_id}, {'$set': item['like_user']})
+
+            elif isinstance(item, RepostUserItem):
+                repost_id = item['repost_user']['id']
+                self.db['repost'].update({"id": repost_id}, {'$set': item['repost_user']})
+
             elif isinstance(item, UserInfoItem):
                 uid = item['user_info']['id']
                 item['user_info']['crawled_time'] = crawled_time
