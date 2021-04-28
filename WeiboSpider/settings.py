@@ -14,7 +14,7 @@ BOT_NAME = 'WeiboSpider'
 SPIDER_MODULES = ['WeiboSpider.spiders']
 NEWSPIDER_MODULE = 'WeiboSpider.spiders'
 
-LOG_FILE = "spider.log"
+# LOG_FILE = "spider2.log"
 LOG_LEVEL = "DEBUG"
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -29,7 +29,7 @@ CONCURRENT_REQUESTS = 32
 # Configure a delay for requests for the same website (default: 0)
 # See https://doc.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 0
+DOWNLOAD_DELAY = 3
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -60,8 +60,9 @@ DOWNLOADER_MIDDLEWARES = {
     'scrapy.downloadermiddleware.useragent.UserAgentMiddleware': None,
     'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': None,
     # 'WeiboSpider.middlewares.RandomUaAndProxyIpMiddleware': 400,
-    'WeiboSpider.middlewares.RandomUaAndProxyIpMiddleware': None,
-    'WeiboSpider.middlewares.RetryMiddleware': 544,
+    # 'WeiboSpider.middlewares.RandomUaAndProxyIpMiddleware': None,
+    'WeiboSpider.middlewares.RandomUserAgentMiddlware': 333,
+    'WeiboSpider.middlewares.RetryMiddleware': None,
 }
 
 # Enable or disable extensions
@@ -75,6 +76,8 @@ DOWNLOADER_MIDDLEWARES = {
 ITEM_PIPELINES = {
    'WeiboSpider.pipelines.WeibospiderPipeline': 300,
 }
+# 禁用REFERER
+REFERER_ENABLED = False
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://doc.scrapy.org/en/latest/topics/autothrottle.html

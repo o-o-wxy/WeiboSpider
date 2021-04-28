@@ -38,6 +38,7 @@ class WeibospiderPipeline(object):
             elif isinstance(item, CommentItem):
                 comment_id = item['user_comment']['id']
                 self.db['comment'].update({"id": comment_id}, {'$set': item['user_comment']},  upsert=True)
+                return item
 
             elif isinstance(item, TotalNumItem):
                 uid_hash = hash(item['uid'])
@@ -53,11 +54,13 @@ class WeibospiderPipeline(object):
 
             elif isinstance(item, LikeUserItem):
                 like_id = item['like_user']['id']
-                self.db['like'].update({"id": like_id}, {'$set': item['like_user']})
+                self.db['like'].update({"id": like_id}, {'$set': item['like_user']},  upsert=True)
+                return item
 
             elif isinstance(item, RepostUserItem):
                 repost_id = item['repost_user']['id']
-                self.db['repost'].update({"id": repost_id}, {'$set': item['repost_user']})
+                self.db['repost'].update({"id": repost_id}, {'$set': item['repost_user']},  upsert=True)
+                return item
 
             elif isinstance(item, UserInfoItem):
                 uid = item['user_info']['id']

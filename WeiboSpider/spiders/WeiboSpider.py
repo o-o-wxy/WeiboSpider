@@ -17,8 +17,6 @@ class WeiboSpider(scrapy.Spider):
     allowed_domains = ['m.weibo.cn', 'weibo.com']  # crawling sites
     handle_httpstatus_list = [418]  # http status code for not ignoring
 
-    headers = {
-        "User-Agent": "Mozilla / 5.0(Windows NT 10.0;Win64;x64) AppleWebKit/537.36(KHTML, like Gecko) Chrome/90.0.4430.72 Safari/537.36 Edg/90.0.818.42"}
     cookies = {
         "_T_WM": "64023443315",
         "XSRF-TOKEN": "1eebfa",
@@ -88,11 +86,12 @@ class WeiboSpider(scrapy.Spider):
         user_info_item['user_info'] = user_info
         uuid = user_info['id']
         yield user_info_item
+        print("parse_user"+str(uuid))
         # 判断微博数量与粉丝数量筛选用户
         if user_info['followers_count'] > 100 and user_info['statuses_count'] > 100:
             weibo_info_urls = self.crawling_post_info(uuid)
             for weibo_info_url in weibo_info_urls:
-                yield scrapy.Request(url=weibo_info_url, headers=self.headers, cookies=self.cookies,
+                yield scrapy.Request(url=weibo_info_url, cookies=self.cookies,
                                      callback=self.parse_post, meta={'uuid': uuid})
 
     def parse_post(self, response):
@@ -100,10 +99,10 @@ class WeiboSpider(scrapy.Spider):
         weibo_info = json.loads(response.text)
         cardListInfo = weibo_info['data']['cardlistInfo']
         # crawl the total number of this user
-        total_item = TotalNumItem()
-        total_item['uid'] = response.meta['uuid']
-        total_item['total_num'] = cardListInfo['total']  # total number of user posts
-        yield total_item
+        # total_item = TotalNumItem()
+        # total_item['uid'] = response.meta['uuid']
+        # total_item['total_num'] = cardListInfo['total']  # total number of user posts
+        # yield total_item
         for card in weibo_info['data']['cards']:
             if card['card_type'] == 9:
                 # only card_type equals 9, we need
@@ -122,22 +121,24 @@ class WeiboSpider(scrapy.Spider):
                 # 评论
                 comment_url = self.crawling_comment_info(mid=mid)
                 yield scrapy.Request(url=comment_url, callback=self.parse_comment,
-                                     headers=self.headers, cookies=self.cookies,
+                                     cookies=self.cookies,
                                      meta={'mid': mid})
                 # 点赞
                 like_url = "https://m.weibo.cn/api/attitudes/show?id=" + str(mid) + "&page=1"
                 yield scrapy.Request(url=like_url, callback=self.parse_like,
-                                     headers=self.headers, cookies=self.cookies,
+                                     cookies=self.cookies,
                                      meta={'mid': mid, 'page': 1})
                 # 转发
                 # https://m.weibo.cn/api/statuses/repostTimeline?id=4630601350516324&page=1
                 repost_url = "https://m.weibo.cn/api/statuses/repostTimeline?id=" + str(mid) + "&page=1"
                 yield scrapy.Request(url=repost_url, callback=self.parse_repost,
-                                     headers=self.headers, cookies=self.cookies,
+                                     cookies=self.cookies,
                                      meta={'mid': mid, 'page': 1})
 
 
     def parse_like(self, response):
+        if json.loads(response.text)['ok'] == 0:
+            return
         data = json.loads(response.text)['data']
         mid = response.meta['mid']
         page = response.meta['page']
@@ -148,7 +149,7 @@ class WeiboSpider(scrapy.Spider):
             if card['user']['followers_count'] > 100:
                 new_uid = card['user']['id']
                 user_info_url = self.crawling_user_info(uuid=new_uid)
-                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                yield scrapy.Request(url=user_info_url,
                                      cookies=self.cookies, callback=self.parse_user)
         # 之后的点赞列表
         max_page = data['max']
@@ -156,11 +157,13 @@ class WeiboSpider(scrapy.Spider):
             page += 1
             like_url = "https://m.weibo.cn/api/attitudes/show?id=" + str(mid) + "&page="+str(page)
             yield scrapy.Request(url=like_url, callback=self.parse_like,
-                                 headers=self.headers, cookies=self.cookies,
+                                 cookies=self.cookies,
                                  meta={'mid': mid, 'page': page})
 
 
     def parse_repost(self, response):
+        if json.loads(response.text)['ok'] == 0:
+            return
         data = json.loads(response.text)['data']
         mid = response.meta['mid']
         page = response.meta['page']
@@ -171,7 +174,7 @@ class WeiboSpider(scrapy.Spider):
             if card['user']['followers_count'] > 100:
                 new_uid = card['user']['id']
                 user_info_url = self.crawling_user_info(uuid=new_uid)
-                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                yield scrapy.Request(url=user_info_url,
                                      cookies=self.cookies, callback=self.parse_user)
         # 之后的转发列表
         max_page = data['max']
@@ -179,11 +182,13 @@ class WeiboSpider(scrapy.Spider):
             page += 1
             repost_url = "https://m.weibo.cn/api/statuses/repostTimeline?id=" + str(mid) + "&page="+str(page)
             yield scrapy.Request(url=repost_url, callback=self.parse_repost,
-                                 headers=self.headers, cookies=self.cookies,
+                                 cookies=self.cookies,
                                  meta={'mid': mid, 'page': page})
 
 
     def parse_comment_child(self, response):
+        if json.loads(response.text)['ok'] == 0:
+            return
         data = json.loads(response.text)
         mid = response.meta['mid']
         for card in data['data']:
@@ -195,7 +200,7 @@ class WeiboSpider(scrapy.Spider):
             if card['user']['followers_count'] > 100 and card['user']['statuses_count'] > 100:
                 new_uid = card['user']['id']
                 user_info_url = self.crawling_user_info(uuid=new_uid)
-                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                yield scrapy.Request(url=user_info_url,
                                      cookies=self.cookies, callback=self.parse_user)
         # 爬取之后的评论页面
         while True:
@@ -205,10 +210,12 @@ class WeiboSpider(scrapy.Spider):
                 max_id = data['max_id']
             comment_url = self.crawling_comment_info(mid=mid, max_id=max_id)
             yield scrapy.Request(url=comment_url, callback=self.parse_comment_child,
-                                 headers=self.headers, cookies=self.cookies,
+                                 cookies=self.cookies,
                                  meta={'mid': mid})
 
     def parse_comment(self, response):
+        if json.loads(response.text)['ok'] == 0:
+            return
         data = json.loads(response.text)['data']
         mid = response.meta['mid']
         for card in data['data']:
@@ -220,13 +227,13 @@ class WeiboSpider(scrapy.Spider):
             # 判断微博数量与粉丝数量筛选用户
             if card['user']['followers_count'] > 100 and card['user']['statuses_count'] > 100:
                 user_info_url = self.crawling_user_info(uuid=new_uid)
-                yield scrapy.Request(url=user_info_url, headers=self.headers,
+                yield scrapy.Request(url=user_info_url,
                                      cookies=self.cookies, callback=self.parse_user)
             # 爬取回复
             if card['more_info_type'] != 0:
                 cid = card['id']
                 cid_url = self.crawling_comment_child(cid=cid, max_id="0")
-                yield scrapy.Request(url=cid_url, headers=self.headers, cookies=self.cookies,
+                yield scrapy.Request(url=cid_url, cookies=self.cookies,
                                      callback=self.parse_comment_child, meta={'mid': mid})
 
         # 爬取之后的评论页面
@@ -237,7 +244,7 @@ class WeiboSpider(scrapy.Spider):
                 max_id = data['max_id']
             comment_url = self.crawling_comment_info(mid=mid, max_id=max_id)
             yield scrapy.Request(url=comment_url, callback=self.parse_comment,
-                                 headers=self.headers, cookies=self.cookies,
+                                 cookies=self.cookies,
                                  meta={'mid': mid})
 
     def parse_longtext(self, response):

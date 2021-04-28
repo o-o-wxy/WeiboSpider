@@ -17,6 +17,20 @@ from scrapy.exceptions import IgnoreRequest
 from scrapy.downloadermiddlewares.useragent import UserAgentMiddleware
 
 
+class RandomUserAgentMiddlware(object):
+    #随机更换user-agent
+    def __init__(self,crawler):
+        super(RandomUserAgentMiddlware,self).__init__()
+        self.ua = UserAgent()
+
+    @classmethod
+    def from_crawler(cls,crawler):
+        return cls(crawler)
+
+    def process_request(self,request,spider):
+        request.headers.setdefault("User-Agent",self.ua.random)
+
+
 # to add random user-agent for every request
 # to add random proxy IP address for every request
 class RandomUaAndProxyIpMiddleware(UserAgentMiddleware):
@@ -35,7 +49,7 @@ class RandomUaAndProxyIpMiddleware(UserAgentMiddleware):
         return s
 
     @staticmethod
-    def get_proxy_ip(ip_num):
+    def get_proxy_ip():
         # rewrite your own method for getting proxy ip address
 
         # rad_index = random.randint(1, ip_num)
