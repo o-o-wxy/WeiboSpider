@@ -15,20 +15,22 @@ from fake_useragent import UserAgent
 from scrapy import signals
 from scrapy.exceptions import IgnoreRequest
 from scrapy.downloadermiddlewares.useragent import UserAgentMiddleware
+from scrapy import signals
+from w3lib.http import basic_auth_header
 
 
 class RandomUserAgentMiddlware(object):
-    #随机更换user-agent
-    def __init__(self,crawler):
-        super(RandomUserAgentMiddlware,self).__init__()
+    # 随机更换user-agent
+    def __init__(self, crawler):
+        super(RandomUserAgentMiddlware, self).__init__()
         self.ua = UserAgent()
 
     @classmethod
-    def from_crawler(cls,crawler):
+    def from_crawler(cls, crawler):
         return cls(crawler)
 
-    def process_request(self,request,spider):
-        request.headers.setdefault("User-Agent",self.ua.random)
+    def process_request(self, request, spider):
+        request.headers.setdefault("User-Agent", self.ua.random)
 
 
 # to add random user-agent for every request
@@ -132,3 +134,14 @@ class RetryMiddleware(object):
                                     + spider.name + ": drop request by json decoding error, url:"
                                     + response.url, level=logging.INFO)
                     raise IgnoreRequest
+
+
+class ProxyDownloaderMiddleware:
+
+    def process_request(self, request, spider):
+        proxy = "tps122.kdlapi.com:15818"
+        request.meta['proxy'] = "http://%(proxy)s" % {'proxy': proxy}
+        # 用户名密码认证
+        request.headers['Proxy-Authorization'] = basic_auth_header('t12259120206117', 'ex1zj2rw')  # 白名单认证可注释此行
+        request.headers["Connection"] = "close"
+        return None
